@@ -417,9 +417,9 @@
 
     <script>
         // ========================================================
-        // GANTI DI BAWAH INI DENGAN URL APPS SCRIPT ANDA SEBELUMNYA
+        // PASTIKAN MASUKKAN URL WEB APP APPS SCRIPT ANDA DI SINI
         // ========================================================
-        const WEB_APP_URL = "MASUKKAN_URL_WEB_APP_APPS_SCRIPT_DISINI";
+        const WEB_APP_URL = https://script.google.com/a/macros/students.um.ac.id/s/AKfycbz6Rlwr8ZqTA9UsVUPJlgp8_cy17Z4LXcw79WXenW2oQnhht5n7IxNBmccB62IoMimx/exec;
 
         const daftarMahasiswa = [
             "Abdullah Gibran Ali", "Afrian Dwi Wahyudi", "Aldi Dwi Saputra", 
@@ -435,12 +435,12 @@
             const mainContainer = document.getElementById('main-container');
             mainContainer.style.display = 'block';
             setTimeout(() => mainContainer.classList.add('show'), 50);
-            ambilDataDariSheets(); // Ambil data dari server saat masuk dashboard
+            ambilDataDariSheets(); 
         }
 
-        // Ambil data lama yang sudah tersimpan di Google Sheets secara online
+        // Ambil data yang tersimpan dari Google Sheets
         function ambilDataDariSheets() {
-            if (WEB_APP_URL === "https://script.google.com/a/macros/students.um.ac.id/s/AKfycbz6Rlwr8ZqTA9UsVUPJlgp8_cy17Z4LXcw79WXenW2oQnhht5n7IxNBmccB62IoMimx/exec") return;
+            if (WEB_APP_URL === "MASUKKAN_URL_WEB_APP_APPS_SCRIPT_DISINI") return;
             
             fetch(WEB_APP_URL)
                 .then(res => res.json())
@@ -452,6 +452,7 @@
                 .catch(err => console.error("Gagal mengambil data:", err));
         }
 
+        // Susunan data master jadwal KKN resmi dari dokumen
         function buatJadwalOtomatis() {
             const bodyJadwal = document.getElementById('body-jadwal');
             bodyJadwal.innerHTML = "";
@@ -533,7 +534,7 @@
             });
         }
 
-        // KIRIM DATA KE GOOGLE SHEETS
+        // KIRIM DATA KE GOOGLE SHEETS (DIPERBARUI SUPAYA TIDAK CORS ERROR)
         function simpanLaporan(e) {
             e.preventDefault();
             const btnKirim = document.getElementById('btnKirim');
@@ -549,26 +550,37 @@
                 const reader = new FileReader();
                 reader.onload = function(event) {
                     const payload = {
+                        tanggal: tglSekarang,
                         nama: nama,
                         hari: hari,
-                        foto: event.target.result,
-                        tanggal: tglSekarang
+                        foto: event.target.result
                     };
 
-                    // Kirim ke Google Apps Script Server lewat jalur API Fetch
+                    // Mengonversi data ke form-urlencoded agar lolos CORS bypass
+                    const formBody = [];
+                    formBody.push(encodeURIComponent("tanggal") + "=" + encodeURIComponent(payload.tanggal));
+                    formBody.push(encodeURIComponent("nama") + "=" + encodeURIComponent(payload.nama));
+                    formBody.push(encodeURIComponent("hari") + "=" + encodeURIComponent(payload.hari));
+                    formBody.push(encodeURIComponent("foto") + "=" + encodeURIComponent(payload.foto));
+                    const requestBody = formBody.join("&");
+
                     fetch(WEB_APP_URL, {
                         method: "POST",
-                        mode: "no-cors", // Mode aman bypass CORS untuk Apps Script
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(payload)
-                    }).then(() => {
+                        headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+                        mode: "no-cors", 
+                        body: requestBody
+                    })
+                    .then(() => {
                         alert(`Laporan piket ${nama} sukses tersimpan di Google Sheets pusat!`);
                         document.getElementById('formPiket').reset();
                         btnKirim.disabled = false;
                         btnKirim.innerText = "Kirim Laporan";
-                        ambilDataDariSheets(); // Tarik data terbaru untuk refresh tabel rekap otomatis
-                    }).catch(err => {
-                        alert("Terjadi kesalahan pengiriman online.");
+                        
+                        // Jeda 2 detik lalu segarkan rekap otomatis dari database online terbaru
+                        setTimeout(ambilDataDariSheets, 2000); 
+                    })
+                    .catch(err => {
+                        alert("Terjadi kesalahan koneksi internet.");
                         btnKirim.disabled = false;
                         btnKirim.innerText = "Kirim Laporan";
                     });
